@@ -135,13 +135,14 @@ async def handle_slack(request: Request):
         
         # Process with AI if needed
         ai_response = ""
-        if text and should_process_with_ai(text):
+        if text:
             ai_response = get_ai_response(text)
             logger.info(f"AI processed: {text[:50]}...")
         
         # Prepare workflow data
         workflow_data = {
             "user": user,
+            "query": text,
             "message": text
         }
         
