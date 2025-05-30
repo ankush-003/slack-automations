@@ -134,10 +134,10 @@ def handle_slack(request: Request):
         # Prepare workflow data
         workflow_data = {
             "message": text,
-            "user": user,
-            "channel": channel,
-            "ai_response": ai_response,
-            "timestamp": time.time()
+            "user": user
+            # "channel": channel,
+            # "ai_response": ai_response,
+            # "timestamp": time.time()
         }
         
         # Send to workflow
