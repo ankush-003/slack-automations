@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
-import httpx
+import requests
 import hashlib
 import hmac
 import time
@@ -64,27 +64,35 @@ def send_to_workflow(data: dict) -> bool:
         return False
     
     try:
-        response = httpx.post(SLACK_WORKFLOW_URL, json=data, timeout=10)
+        payload = json.dumps(data)
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        
+        logger.info(f"Sending to workflow: {payload}")
+        response = requests.post(SLACK_WORKFLOW_URL, headers=headers, data=payload, timeout=10)
+        logger.info(f"Workflow response status: {response.status_code}")
+        logger.info(f"Workflow response body: {response.text}")
         response.raise_for_status()
         logger.info("Sent to workflow successfully")
         return True
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"Workflow HTTP error {response.status_code}: {response.text}")
+        return False
     except Exception as e:
         logger.error(f"Workflow error: {e}")
         return False
 
 @app.post("/slack")
-def handle_slack(request: Request):
+async def handle_slack(request: Request):
     """Single endpoint for all Slack requests"""
     try:
         # Get request data
         timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
         signature = request.headers.get("X-Slack-Signature", "")
         
-        # Read body synchronously
-        import asyncio
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        body = loop.run_until_complete(request.body())
+        # Read body
+        body = await request.body()
         
         # Verify signature
         if not verify_slack_signature(body, timestamp, signature):
@@ -133,12 +141,13 @@ def handle_slack(request: Request):
         
         # Prepare workflow data
         workflow_data = {
-            "message": text,
-            "user": user
-            # "channel": channel,
-            # "ai_response": ai_response,
-            # "timestamp": time.time()
+            "user": user,
+            "message": text
         }
+        
+        # Add AI response to message if available
+        if ai_response:
+            workflow_data["message"] = f"{ai_response}"
         
         # Send to workflow
         send_to_workflow(workflow_data)
