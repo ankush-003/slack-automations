@@ -126,7 +126,7 @@ async def handle_slack(request: Request):
             channel = event.get("channel", "")
         elif "text" in payload:  # Slash command
             text = payload.get("text", "")
-            user = payload.get("user_name", "")
+            user = payload.get("user_id", "")
             channel = payload.get("channel_id", "")
         
         # Skip bot messages
