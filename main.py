@@ -19,12 +19,12 @@ logger = logging.getLogger(__name__)
 #     # say() sends a message to the channel where the event was triggered
 #     say(f"Hey there <@{message['user']}>!")
 
-api = FastAPI(title="Slack Bot API", version="1.0.0")
+app = FastAPI(title="Slack Bot API", version="1.0.0")
 
 # Include routers
-api.include_router(slack.router)
+app.include_router(slack.router)
 
-@api.get("/")
+@app.get("/")
 def health_check():
     """Health check"""
     return {"status": "healthy"}

@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Request, HTTPException
 import json
 import logging
-from crew.crew import SlackCrew
+from llm.utils import research_chain, reporter_chain
+from slack.utils import verify_slack_signature
+from slack.workflows import send_to_workflow
 
 router = APIRouter(
     prefix="/v1"
@@ -14,7 +16,6 @@ logger = logging.getLogger(__name__)
 @router.post("/slack")
 async def handle_slack(request: Request):
     """Single endpoint for all Slack requests"""
-    crew = SlackCrew().crew()
     try:
         # Get request data
         timestamp = request.headers.get("X-Slack-Request-Timestamp", "")
@@ -63,11 +64,11 @@ async def handle_slack(request: Request):
             return {"status": "ignored"}
         
         # Process with AI if needed
-        crew_response = ""
+        ai_response = ""
         if text:
-            crew_response = crew.kickoff(inputs = {
-                "question": text,
-            })
+            context = research_chain.invoke({"question": text})
+            res = reporter_chain.invoke({"question": text, "context": context.content})
+            ai_response = res.content
             logger.info(f"AI processed: {text[:50]}...")
         
         # Prepare workflow data
@@ -84,10 +85,9 @@ async def handle_slack(request: Request):
         # Send to workflow
         send_to_workflow(workflow_data)
         
-        return {"status": "ok"}
+        return "Message sent 🚀"
         
-    except HTTPException:
-        raise
     except Exception as e:
+        print(e)
         logger.error(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Server error")

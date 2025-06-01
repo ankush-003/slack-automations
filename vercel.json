@@ -2,8 +2,7 @@
   "builds": [
     {
       "src": "main.py",
-      "use": "@vercel/python",
-      "excludeFiles": "{pyproject.toml,uv.lock,requirements.txt,__pycache__,.gitignore}/**"
+      "use": "@vercel/python"
     }
   ],
   "routes": [

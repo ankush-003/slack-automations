@@ -3,6 +3,4 @@ uvicorn[standard]
 httpx
 pydantic
 python-multipart
-crewai
-langchain-community
-duckduckgo-search
+langchain-google-genai
