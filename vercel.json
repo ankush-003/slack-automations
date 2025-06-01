@@ -10,10 +10,5 @@
       "src": "/(.*)",
       "dest": "main.py"
     }
-  ],
-  "functions": {
-    "api/**": {
-      "excludeFiles": "{pyproject.toml,uv.lock,requirements.txt,__pycache__,.gitignore}/**"
-    }
-  }
+  ]
 }

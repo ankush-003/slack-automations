@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 api = FastAPI(title="Slack Bot API", version="1.0.0")
 
+# Include routers
 api.include_router(slack.router)
 
 @api.get("/")
