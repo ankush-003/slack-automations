@@ -4,6 +4,8 @@ import logging
 from llm.utils import research_chain, reporter_chain
 from slack.utils import verify_slack_signature
 from slack.workflows import send_to_workflow
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 router = APIRouter(
     prefix="/v1"
@@ -12,6 +14,9 @@ router = APIRouter(
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Add this executor at the top of your file (outside the function)
+executor = ThreadPoolExecutor(max_workers=4)
 
 @router.post("/slack")
 async def handle_slack(request: Request):
@@ -66,8 +71,10 @@ async def handle_slack(request: Request):
         # Process with AI if needed
         ai_response = ""
         if text:
-            context = research_chain.invoke({"question": text})
-            res = reporter_chain.invoke({"question": text, "context": context.content})
+            # Run AI processing in thread pool to avoid blocking
+            loop = asyncio.get_event_loop()
+            context = await loop.run_in_executor(executor, research_chain.invoke, {"question": text})
+            res = await loop.run_in_executor(executor, reporter_chain.invoke, {"question": text, "context": context.content})
             ai_response = res.content
             logger.info(f"AI processed: {text[:50]}...")
         
@@ -82,12 +89,25 @@ async def handle_slack(request: Request):
         if ai_response:
             workflow_data["message"] = f"{ai_response}"
         
-        # Send to workflow
-        send_to_workflow(workflow_data)
+        # Send to workflow asynchronously (fire and forget)
+        asyncio.create_task(async_send_to_workflow(workflow_data))
         
-        return "Message sent 🚀"
+        # Return the AI response immediately
+        return {
+            "response_type": "in_channel",  # or "ephemeral" for private response
+            "text": ai_response if ai_response else "Message processed 🚀"
+        }
         
     except Exception as e:
-        print(e)
-        logger.error(f"Error: {e}")
-        raise HTTPException(status_code=500, detail="Server error")
+        logger.error(f"Error handling Slack request: {str(e)}")
+        return {"text": "Sorry, something went wrong processing your request."}
+
+
+async def async_send_to_workflow(workflow_data: dict):
+    """Async wrapper for sending data to workflow"""
+    try:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(executor, send_to_workflow, workflow_data)
+        logger.info("Successfully sent data to workflow")
+    except Exception as e:
+        logger.error(f"Failed to send to workflow: {str(e)}")
